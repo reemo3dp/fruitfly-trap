@@ -1,0 +1,31 @@
+name: Build and commit
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate trunkver
+        id: trunkver
+        uses: crftd-tech/trunkver@main
+      - uses: actions/checkout@v4
+      - name: Render in OpenSCAD
+        run: |
+          set -euxo pipefail
+          docker run --rm -v $PWD:/work -w /work openscad/openscad:dev \
+            bash -c 'apt-get install -y make && make clean && make -j4 -Otarget all'
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          name: ${{ steps.trunkver.outputs.trunkver }}
+          tag_name: ${{ steps.trunkver.outputs.trunkver }}
+          files: |
+            stls/*.stl
